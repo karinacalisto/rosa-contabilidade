@@ -1,0 +1,240 @@
+### ===== Rosa Contabilidade - Testes de API =====
+### Use com a extensão REST Client do VS Code ou similar
+
+@baseUrl = http://localhost:5000/api
+@adminToken = SEU_TOKEN_AQUI
+@clienteToken = SEU_TOKEN_AQUI
+
+### ===== AUTH =====
+
+### Login Admin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@admin.com",
+  "password": "TrocarNaPrimeiraSenha123!"
+}
+
+### Login Cliente
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "maria.silva@exemplo.com",
+  "password": "Cliente123!"
+}
+
+### Refresh Token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "SEU_REFRESH_TOKEN"
+}
+
+### Forgot Password
+POST {{baseUrl}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "admin@admin.com"
+}
+
+### Reset Password
+POST {{baseUrl}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "email": "admin@admin.com",
+  "token": "TOKEN_DO_FORGOT_PASSWORD",
+  "newPassword": "NovaSenha123!"
+}
+
+### Change Password (logado)
+POST {{baseUrl}}/auth/change-password
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "currentPassword": "TrocarNaPrimeiraSenha123!",
+  "newPassword": "NovaSenha123!"
+}
+
+### Me
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{adminToken}}
+
+### ===== CALCULADORA (PÚBLICA) =====
+
+### Calcular PJ Simples
+POST {{baseUrl}}/calculator
+Content-Type: application/json
+
+{
+  "tipoPessoa": "PJ",
+  "receitaMensal": 30000,
+  "despesasDedutiveis": 5000,
+  "aliquotaEstimada": null,
+  "opcaoRegime": "simples"
+}
+
+### Calcular PF
+POST {{baseUrl}}/calculator
+Content-Type: application/json
+
+{
+  "tipoPessoa": "PF",
+  "receitaMensal": 15000,
+  "despesasDedutiveis": 3000,
+  "aliquotaEstimada": null,
+  "opcaoRegime": null
+}
+
+### Calcular PJ Lucro Presumido
+POST {{baseUrl}}/calculator
+Content-Type: application/json
+
+{
+  "tipoPessoa": "PJ",
+  "receitaMensal": 50000,
+  "despesasDedutiveis": 0,
+  "aliquotaEstimada": null,
+  "opcaoRegime": "geral"
+}
+
+### ===== LEADS =====
+
+### Criar Lead via Contato
+POST {{baseUrl}}/leads/contato
+Content-Type: application/json
+
+{
+  "nome": "Dr. Teste",
+  "email": "teste@email.com",
+  "telefone": "(11) 99999-9999",
+  "mensagem": "Gostaria de saber mais sobre os serviços."
+}
+
+### Criar Lead via Calculadora
+POST {{baseUrl}}/leads/calculadora
+Content-Type: application/json
+
+{
+  "nome": "Dr. Calculadora",
+  "email": "calc@email.com",
+  "telefone": "(11) 88888-8888",
+  "tipoPessoa": "PJ",
+  "receitaMensal": 30000,
+  "despesasDedutiveis": 5000,
+  "aliquotaEstimada": null,
+  "opcaoRegime": "simples",
+  "impostoEstimado": 2700,
+  "percentualEfetivo": 0.09
+}
+
+### Listar Leads (Admin)
+GET {{baseUrl}}/leads
+Authorization: Bearer {{adminToken}}
+
+### Listar Leads - Filtrar por origem
+GET {{baseUrl}}/leads?origem=calculadora
+Authorization: Bearer {{adminToken}}
+
+### Excluir Lead
+DELETE {{baseUrl}}/leads/1
+Authorization: Bearer {{adminToken}}
+
+### ===== CLIENTES =====
+
+### Listar Clientes (Admin)
+GET {{baseUrl}}/clients
+Authorization: Bearer {{adminToken}}
+
+### Criar Cliente (Admin)
+POST {{baseUrl}}/clients
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "email": "novo.cliente@exemplo.com",
+  "password": "NovoCliente123!",
+  "fullName": "Novo Cliente Teste",
+  "cpfCnpj": "123.456.789-00",
+  "regimeObservacoes": "PF - Teste"
+}
+
+### Dashboard do Cliente (logado como cliente)
+GET {{baseUrl}}/clients/dashboard
+Authorization: Bearer {{clienteToken}}
+
+### Atualizar Cliente
+PUT {{baseUrl}}/clients/ID_DO_CLIENTE
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "fullName": "Nome Atualizado",
+  "cpfCnpj": "123.456.789-00",
+  "phoneNumber": "(11) 99999-0000",
+  "regimeObservacoes": "PF - Atualizado"
+}
+
+### ===== PENDÊNCIAS =====
+
+### Listar Pendências (Admin)
+GET {{baseUrl}}/pendencies
+Authorization: Bearer {{adminToken}}
+
+### Minhas Pendências (Cliente)
+GET {{baseUrl}}/pendencies/minhas
+Authorization: Bearer {{clienteToken}}
+
+### Criar Pendência (Admin)
+POST {{baseUrl}}/pendencies
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "descricao": "Enviar comprovante de rendimentos",
+  "clienteId": "ID_DO_CLIENTE",
+  "dataLimite": "2024-12-31T00:00:00Z",
+  "resolvida": false
+}
+
+### ===== LINKS DE PAGAMENTO =====
+
+### Listar Links (Admin)
+GET {{baseUrl}}/paymentlinks
+Authorization: Bearer {{adminToken}}
+
+### Meus Links (Cliente)
+GET {{baseUrl}}/paymentlinks/meus
+Authorization: Bearer {{clienteToken}}
+
+### Criar Link (Admin)
+POST {{baseUrl}}/paymentlinks
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "descricao": "Honorários Janeiro 2024",
+  "clienteId": "ID_DO_CLIENTE",
+  "url": "https://pag.ae/exemplo123",
+  "valor": 500.00,
+  "pago": false
+}
+
+### ===== DOCUMENTOS =====
+
+### Meus Documentos (Cliente)
+GET {{baseUrl}}/documents/meus
+Authorization: Bearer {{clienteToken}}
+
+### Download Documento
+GET {{baseUrl}}/documents/1/download
+Authorization: Bearer {{adminToken}}
+
+### Excluir Documento (Admin)
+DELETE {{baseUrl}}/documents/1
+Authorization: Bearer {{adminToken}}

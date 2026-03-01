@@ -1,0 +1,41 @@
+# .NET
+bin/
+obj/
+publish/
+*.user
+*.suo
+*.cache
+*.dll
+*.exe
+*.pdb
+
+# Node
+node_modules/
+client-app/dist/
+client-app/.angular/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build output
+RosaContabilidade.Api/wwwroot/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+*.env.local
+
+# Uploads
+App_Data/
+uploads/
+
+# Logs
+logs/
+*.log
