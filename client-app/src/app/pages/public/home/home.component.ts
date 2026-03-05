@@ -30,7 +30,7 @@ import { MatIconModule } from '@angular/material/icon';
             <mat-card-title>Especialistas em Saúde</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <p>[PLACEHOLDER: Descrição do diferencial em contabilidade médica]</p>
+            <p>A Rosa Contabilidade une tecnologia, organização e atendimento humano para simplificar a gestão financeira do seu negócio. Cuidamos da parte contábil com responsabilidade e transparência para que você possa focar no que realmente importa: fazer sua empresa crescer.</p>
           </mat-card-content>
         </mat-card>
 
@@ -40,17 +40,7 @@ import { MatIconModule } from '@angular/material/icon';
             <mat-card-title>Economia Tributária</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <p>[PLACEHOLDER: Descrição sobre planejamento tributário e economia de impostos]</p>
-          </mat-card-content>
-        </mat-card>
-
-        <mat-card>
-          <mat-card-header>
-            <mat-icon mat-card-avatar>devices</mat-icon>
-            <mat-card-title>Portal Digital</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <p>[PLACEHOLDER: Descrição do portal online para acompanhamento]</p>
+            <p>Analisamos o regime tributário ideal para sua empresa, garantindo o pagamento correto de impostos e identificando oportunidades legais de economia.</p>
           </mat-card-content>
         </mat-card>
 
@@ -60,7 +50,7 @@ import { MatIconModule } from '@angular/material/icon';
             <mat-card-title>Atendimento Dedicado</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <p>[PLACEHOLDER: Descrição do suporte personalizado]</p>
+            <p>Oferecemos um atendimento personalizado e dedicado, com profissionais qualificados para atender às necessidades específicas de cada cliente.</p>
           </mat-card-content>
         </mat-card>
       </div>
@@ -68,7 +58,7 @@ import { MatIconModule } from '@angular/material/icon';
 
     <section class="cta-section">
       <h2>Pronto para simplificar sua contabilidade?</h2>
-      <p>[PLACEHOLDER: Chamada para ação final]</p>
+      <p>Fale com nossa equipe e descubra como podemos cuidar da sua contabilidade com clareza e eficiência.</p>
       <a mat-raised-button color="primary" routerLink="/contato" class="cta-btn">Entre em Contato</a>
     </section>
   `,

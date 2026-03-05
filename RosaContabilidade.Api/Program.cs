@@ -152,7 +152,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Rosa Contabilidade API v1");
-    c.RoutePrefix = "api/swagger";
+    c.RoutePrefix = "";  // Raiz: http://localhost:5212/
 });
 
 app.UseDefaultFiles();
@@ -169,19 +169,27 @@ app.MapControllers();
 app.MapFallbackToFile("index.html");
 
 // ===== Migrations + Seed em DEV =====
-using (var scope = app.Services.CreateScope())
+try
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    if (app.Environment.IsDevelopment())
-    {
-        await db.Database.EnsureCreatedAsync();
-        await SeedData.Initialize(scope.ServiceProvider);
+        if (app.Environment.IsDevelopment())
+        {
+            await db.Database.EnsureCreatedAsync();
+            await SeedData.Initialize(scope.ServiceProvider);
+        }
+        else
+        {
+            await db.Database.MigrateAsync();
+        }
     }
-    else
-    {
-        await db.Database.MigrateAsync();
-    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"❌ Erro ao conectar ao banco: {ex.Message}");
+    Console.WriteLine($"Stack: {ex.StackTrace}");
 }
 
 app.Run();
