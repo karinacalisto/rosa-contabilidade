@@ -13,7 +13,7 @@ import { MatIconModule } from '@angular/material/icon';
     <section class="hero">
       <div class="hero-content">
         <h1>Contabilidade Especializada para Profissionais da Saúde</h1>
-        <p>[PLACEHOLDER: Texto principal da home - descreva a proposta de valor da Rosa Contabilidade para médicos e profissionais de saúde]</p>
+        <p>Soluções contábeis inteligentes para quem dedica a vida a cuidar de pessoas.</p>
         <div class="hero-actions">
           <a mat-raised-button color="primary" routerLink="/contato" class="cta-btn">Fale Conosco</a>
           <a mat-raised-button color="accent" routerLink="/calculadora" class="cta-btn">Simular Impostos</a>

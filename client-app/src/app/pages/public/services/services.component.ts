@@ -53,7 +53,7 @@ import { MatButtonModule } from '@angular/material/button';
 })
 export class ServicesComponent {
   services = [
-    { icon: 'account_balance', title: 'Contabilidade Geral', description: '[PLACEHOLDER: Descrição do serviço de contabilidade geral]' },
+    { icon: 'account_balance', title: 'Contabilidade Geral', description: 'Cuidamos de toda a contabilidade da sua empresa, garantindo organização financeira e cumprimento das obrigações fiscais.' },
     { icon: 'receipt_long', title: 'Imposto de Renda PF', description: '[PLACEHOLDER: Descrição do serviço de IRPF para profissionais de saúde]' },
     { icon: 'business', title: 'Abertura de Empresa', description: '[PLACEHOLDER: Descrição do serviço de abertura de PJ médica]' },
     { icon: 'calculate', title: 'Planejamento Tributário', description: '[PLACEHOLDER: Descrição do planejamento tributário especializado]' },

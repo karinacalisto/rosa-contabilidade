@@ -56,13 +56,11 @@ import { AuthService } from '../../core/services/auth.service';
       <div class="footer-content">
         <div class="footer-section">
           <h3>Rosa Contabilidade</h3>
-          <p>[PLACEHOLDER: Descrição curta da empresa]</p>
+          <p>A Rosa Contabilidade oferece soluções contábeis seguras e eficientes para ajudar empresas e profissionais a crescer com organização e tranquilidade.</p>
         </div>
         <div class="footer-section">
           <h3>Contato</h3>
-          <p>[PLACEHOLDER: Telefone]</p>
-          <p>[PLACEHOLDER: E-mail]</p>
-          <p>[PLACEHOLDER: Endereço]</p>
+          <p>11 99162-3525</p>
         </div>
         <div class="footer-section">
           <h3>Links</h3>
