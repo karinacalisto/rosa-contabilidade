@@ -1,12 +1,19 @@
+using Amazon.DynamoDBv2.DataModel;
+
 namespace RosaContabilidade.Api.Models;
 
+[DynamoDBTable("RosaLeads")]
 public class Lead
 {
-    public int Id { get; set; }
+    [DynamoDBHashKey]
+    public string Id { get; set; } = Guid.NewGuid().ToString();
+
     public string Nome { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Telefone { get; set; }
     public string? Mensagem { get; set; }
+
+    [DynamoDBGlobalSecondaryIndexHashKey("Origem-index")]
     public string Origem { get; set; } = "contato"; // contato | calculadora
 
     // Dados da simulação (quando origem = calculadora)

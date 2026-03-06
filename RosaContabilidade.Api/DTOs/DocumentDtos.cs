@@ -2,7 +2,7 @@ namespace RosaContabilidade.Api.DTOs;
 
 public class DocumentDto
 {
-    public int Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string NomeOriginal { get; set; } = string.Empty;
     public string TipoMime { get; set; } = string.Empty;
     public long TamanhoBytes { get; set; }

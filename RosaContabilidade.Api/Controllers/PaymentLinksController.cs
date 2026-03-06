@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RosaContabilidade.Api.Data;
+using RosaContabilidade.Api.Data.Repositories;
 using RosaContabilidade.Api.DTOs;
 using RosaContabilidade.Api.Models;
 
@@ -13,42 +13,52 @@ namespace RosaContabilidade.Api.Controllers;
 [Authorize]
 public class PaymentLinksController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly PaymentLinkRepository _repo;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public PaymentLinksController(AppDbContext db)
+    public PaymentLinksController(PaymentLinkRepository repo, UserManager<ApplicationUser> userManager)
     {
-        _db = db;
+        _repo = repo;
+        _userManager = userManager;
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpGet]
     public async Task<ActionResult<List<PaymentLinkDto>>> GetAll([FromQuery] string? clienteId)
     {
-        var query = _db.PaymentLinks.Include(p => p.Cliente).AsQueryable();
-        if (!string.IsNullOrEmpty(clienteId))
-            query = query.Where(p => p.ClienteId == clienteId);
-
-        var items = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
-        return Ok(items.Select(MapToDto));
+        var items = await _repo.GetAllAsync(clienteId);
+        foreach (var item in items)
+        {
+            if (string.IsNullOrEmpty(item.ClienteNome))
+            {
+                var cliente = await _userManager.FindByIdAsync(item.ClienteId);
+                item.ClienteNome = cliente?.FullName;
+            }
+        }
+        var sorted = items.OrderByDescending(p => p.CreatedAt).ToList();
+        return Ok(sorted.Select(MapToDto));
     }
 
     [HttpGet("meus")]
     public async Task<ActionResult<List<PaymentLinkDto>>> GetMine()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var items = await _db.PaymentLinks
-            .Where(p => p.ClienteId == userId)
-            .OrderByDescending(p => p.CreatedAt)
-            .ToListAsync();
-        return Ok(items.Select(MapToDto));
+        var items = await _repo.GetByClienteIdAsync(userId);
+        var sorted = items.OrderByDescending(p => p.CreatedAt).ToList();
+        return Ok(sorted.Select(MapToDto));
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpGet("{id}")]
-    public async Task<ActionResult<PaymentLinkDto>> GetById(int id)
+    public async Task<ActionResult<PaymentLinkDto>> GetById(string id)
     {
-        var item = await _db.PaymentLinks.Include(p => p.Cliente).FirstOrDefaultAsync(p => p.Id == id);
+        var item = await _repo.GetByIdAsync(id);
         if (item == null) return NotFound();
+        if (string.IsNullOrEmpty(item.ClienteNome))
+        {
+            var cliente = await _userManager.FindByIdAsync(item.ClienteId);
+            item.ClienteNome = cliente?.FullName;
+        }
         return Ok(MapToDto(item));
     }
 
@@ -57,6 +67,8 @@ public class PaymentLinksController : ControllerBase
     public async Task<ActionResult<PaymentLinkDto>> Create([FromBody] PaymentLinkCreateRequest request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var cliente = await _userManager.FindByIdAsync(request.ClienteId);
+
         var item = new PaymentLink
         {
             Descricao = request.Descricao,
@@ -64,41 +76,39 @@ public class PaymentLinksController : ControllerBase
             Valor = request.Valor,
             Pago = request.Pago,
             ClienteId = request.ClienteId,
+            ClienteNome = cliente?.FullName,
             CreatedBy = userId
         };
 
-        _db.PaymentLinks.Add(item);
-        await _db.SaveChangesAsync();
+        await _repo.CreateAsync(item);
 
         return CreatedAtAction(nameof(GetById), new { id = item.Id }, MapToDto(item));
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] PaymentLinkUpdateRequest request)
+    public async Task<IActionResult> Update(string id, [FromBody] PaymentLinkUpdateRequest request)
     {
-        var item = await _db.PaymentLinks.FindAsync(id);
+        var item = await _repo.GetByIdAsync(id);
         if (item == null) return NotFound();
 
         item.Descricao = request.Descricao;
         item.Url = request.Url;
         item.Valor = request.Valor;
         item.Pago = request.Pago;
-        item.UpdatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _repo.UpdateAsync(item);
         return NoContent();
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(string id)
     {
-        var item = await _db.PaymentLinks.FindAsync(id);
+        var item = await _repo.GetByIdAsync(id);
         if (item == null) return NotFound();
 
-        _db.PaymentLinks.Remove(item);
-        await _db.SaveChangesAsync();
+        await _repo.DeleteAsync(id);
         return NoContent();
     }
 
@@ -110,7 +120,7 @@ public class PaymentLinksController : ControllerBase
         Valor = p.Valor,
         Pago = p.Pago,
         ClienteId = p.ClienteId,
-        ClienteNome = p.Cliente?.FullName,
+        ClienteNome = p.ClienteNome,
         CreatedAt = p.CreatedAt,
         UpdatedAt = p.UpdatedAt
     };

@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RosaContabilidade.Api.Data;
+using RosaContabilidade.Api.Data.Repositories;
 using RosaContabilidade.Api.DTOs;
 using RosaContabilidade.Api.Models;
 
@@ -11,11 +10,11 @@ namespace RosaContabilidade.Api.Controllers;
 [Route("api/[controller]")]
 public class LeadsController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly LeadRepository _repo;
 
-    public LeadsController(AppDbContext db)
+    public LeadsController(LeadRepository repo)
     {
-        _db = db;
+        _repo = repo;
     }
 
     /// <summary>
@@ -33,8 +32,7 @@ public class LeadsController : ControllerBase
             Origem = "contato"
         };
 
-        _db.Leads.Add(lead);
-        await _db.SaveChangesAsync();
+        await _repo.CreateAsync(lead);
 
         return CreatedAtAction(nameof(GetById), new { id = lead.Id }, MapToDto(lead));
     }
@@ -60,8 +58,7 @@ public class LeadsController : ControllerBase
             PercentualEfetivo = request.PercentualEfetivo
         };
 
-        _db.Leads.Add(lead);
-        await _db.SaveChangesAsync();
+        await _repo.CreateAsync(lead);
 
         return CreatedAtAction(nameof(GetById), new { id = lead.Id }, MapToDto(lead));
     }
@@ -73,32 +70,28 @@ public class LeadsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<LeadDto>>> GetAll([FromQuery] string? origem)
     {
-        var query = _db.Leads.AsQueryable();
-        if (!string.IsNullOrEmpty(origem))
-            query = query.Where(l => l.Origem == origem);
-
-        var leads = await query.OrderByDescending(l => l.CreatedAt).ToListAsync();
-        return Ok(leads.Select(MapToDto));
+        var leads = await _repo.GetAllAsync(origem);
+        var sorted = leads.OrderByDescending(l => l.CreatedAt).ToList();
+        return Ok(sorted.Select(MapToDto));
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpGet("{id}")]
-    public async Task<ActionResult<LeadDto>> GetById(int id)
+    public async Task<ActionResult<LeadDto>> GetById(string id)
     {
-        var lead = await _db.Leads.FindAsync(id);
+        var lead = await _repo.GetByIdAsync(id);
         if (lead == null) return NotFound();
         return Ok(MapToDto(lead));
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(string id)
     {
-        var lead = await _db.Leads.FindAsync(id);
+        var lead = await _repo.GetByIdAsync(id);
         if (lead == null) return NotFound();
 
-        _db.Leads.Remove(lead);
-        await _db.SaveChangesAsync();
+        await _repo.DeleteAsync(id);
         return NoContent();
     }
 

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using RosaContabilidade.Api.Data;
 using RosaContabilidade.Api.DTOs;
 using RosaContabilidade.Api.Models;
 using RosaContabilidade.Api.Services;
@@ -13,19 +14,19 @@ namespace RosaContabilidade.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly TokenService _tokenService;
+    private readonly DynamoUserStore _userStore;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager,
         TokenService tokenService,
+        DynamoUserStore userStore,
         ILogger<AuthController> logger)
     {
         _userManager = userManager;
-        _signInManager = signInManager;
         _tokenService = tokenService;
+        _userStore = userStore;
         _logger = logger;
     }
 
@@ -36,13 +37,19 @@ public class AuthController : ControllerBase
         if (user == null)
             return Unauthorized(new ProblemDetails { Title = "Credenciais inválidas", Status = 401 });
 
-        var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-        if (!result.Succeeded)
+        var passwordValid = await _userManager.CheckPasswordAsync(user, request.Password);
+        if (!passwordValid)
         {
-            if (result.IsLockedOut)
-                return StatusCode(429, new ProblemDetails { Title = "Conta bloqueada temporariamente. Tente novamente em alguns minutos.", Status = 429 });
+            if (user.LockoutEnabled)
+            {
+                await _userManager.AccessFailedAsync(user);
+                if (await _userManager.IsLockedOutAsync(user))
+                    return StatusCode(429, new ProblemDetails { Title = "Conta bloqueada temporariamente. Tente novamente em alguns minutos.", Status = 429 });
+            }
             return Unauthorized(new ProblemDetails { Title = "Credenciais inválidas", Status = 401 });
         }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
 
         var roles = await _userManager.GetRolesAsync(user);
         var accessToken = _tokenService.GenerateAccessToken(user, roles);
@@ -68,7 +75,7 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     public async Task<ActionResult<TokenResponse>> Refresh([FromBody] RefreshTokenRequest request)
     {
-        var user = _userManager.Users.FirstOrDefault(u => u.RefreshToken == request.RefreshToken);
+        var user = await _userStore.FindByRefreshTokenAsync(request.RefreshToken);
         if (user == null || user.RefreshTokenExpiry < DateTime.UtcNow)
             return Unauthorized(new ProblemDetails { Title = "Refresh token inválido ou expirado", Status = 401 });
 
@@ -151,13 +158,11 @@ public class AuthController : ControllerBase
         var user = await _userManager.FindByIdAsync(userId!);
         if (user == null) return NotFound();
 
-        var roles = await _userManager.GetRolesAsync(user);
-
         return Ok(new ClientDto
         {
             Id = user.Id,
             FullName = user.FullName,
-            Email = user.Email!,
+            Email = user.Email,
             CpfCnpj = user.CpfCnpj,
             RegimeObservacoes = user.RegimeObservacoes,
             PhoneNumber = user.PhoneNumber,

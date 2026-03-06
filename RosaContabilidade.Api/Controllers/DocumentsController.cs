@@ -1,10 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RosaContabilidade.Api.Data;
+using RosaContabilidade.Api.Data.Repositories;
 using RosaContabilidade.Api.DTOs;
 using RosaContabilidade.Api.Models;
+using RosaContabilidade.Api.Services;
 
 namespace RosaContabilidade.Api.Controllers;
 
@@ -13,46 +14,47 @@ namespace RosaContabilidade.Api.Controllers;
 [Authorize]
 public class DocumentsController : ControllerBase
 {
-    private readonly AppDbContext _db;
-    private readonly IConfiguration _config;
+    private readonly DocumentRepository _repo;
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly S3StorageService _s3;
     private readonly ILogger<DocumentsController> _logger;
 
-    public DocumentsController(AppDbContext db, IConfiguration config, ILogger<DocumentsController> logger)
+    public DocumentsController(
+        DocumentRepository repo,
+        UserManager<ApplicationUser> userManager,
+        S3StorageService s3,
+        ILogger<DocumentsController> logger)
     {
-        _db = db;
-        _config = config;
+        _repo = repo;
+        _userManager = userManager;
+        _s3 = s3;
         _logger = logger;
-    }
-
-    private string GetUploadPath()
-    {
-        var path = _config["Uploads:Path"] ?? Path.Combine(Directory.GetCurrentDirectory(), "App_Data", "uploads");
-        if (!Directory.Exists(path))
-            Directory.CreateDirectory(path);
-        return path;
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpGet]
     public async Task<ActionResult<List<DocumentDto>>> GetAll([FromQuery] string? clienteId)
     {
-        var query = _db.Documents.Include(d => d.Cliente).AsQueryable();
-        if (!string.IsNullOrEmpty(clienteId))
-            query = query.Where(d => d.ClienteId == clienteId);
-
-        var items = await query.OrderByDescending(d => d.CreatedAt).ToListAsync();
-        return Ok(items.Select(MapToDto));
+        var items = await _repo.GetAllAsync(clienteId);
+        foreach (var item in items)
+        {
+            if (string.IsNullOrEmpty(item.ClienteNome))
+            {
+                var cliente = await _userManager.FindByIdAsync(item.ClienteId);
+                item.ClienteNome = cliente?.FullName;
+            }
+        }
+        var sorted = items.OrderByDescending(d => d.CreatedAt).ToList();
+        return Ok(sorted.Select(MapToDto));
     }
 
     [HttpGet("meus")]
     public async Task<ActionResult<List<DocumentDto>>> GetMine()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var items = await _db.Documents
-            .Where(d => d.ClienteId == userId)
-            .OrderByDescending(d => d.CreatedAt)
-            .ToListAsync();
-        return Ok(items.Select(MapToDto));
+        var items = await _repo.GetByClienteIdAsync(userId);
+        var sorted = items.OrderByDescending(d => d.CreatedAt).ToList();
+        return Ok(sorted.Select(MapToDto));
     }
 
     [Authorize(Roles = "ADMIN")]
@@ -63,36 +65,34 @@ public class DocumentsController : ControllerBase
         if (file == null || file.Length == 0)
             return BadRequest(new ProblemDetails { Title = "Arquivo não enviado", Status = 400 });
 
-        var cliente = await _db.Users.FindAsync(clienteId);
+        var cliente = await _userManager.FindByIdAsync(clienteId);
         if (cliente == null)
             return NotFound(new ProblemDetails { Title = "Cliente não encontrado", Status = 404 });
 
-        var uploadPath = GetUploadPath();
-        var nomeArquivo = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
-        var caminhoCompleto = Path.Combine(uploadPath, nomeArquivo);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-        await using (var stream = new FileStream(caminhoCompleto, FileMode.Create))
+        string s3Key;
+        await using (var stream = file.OpenReadStream())
         {
-            await file.CopyToAsync(stream);
+            s3Key = await _s3.UploadAsync(stream, file.FileName, file.ContentType);
         }
 
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var doc = new Document
         {
             NomeOriginal = file.FileName,
-            NomeArquivo = nomeArquivo,
-            CaminhoRelativo = nomeArquivo,
+            NomeArquivo = Path.GetFileName(s3Key),
+            S3Key = s3Key,
             TipoMime = file.ContentType,
             TamanhoBytes = file.Length,
             Descricao = descricao,
             ClienteId = clienteId,
+            ClienteNome = cliente.FullName,
             CreatedBy = userId
         };
 
-        _db.Documents.Add(doc);
-        await _db.SaveChangesAsync();
+        await _repo.CreateAsync(doc);
 
-        _logger.LogInformation("Documento enviado: {Nome} para cliente {ClienteId}", file.FileName, clienteId);
+        _logger.LogInformation("Documento enviado para S3: {Nome} para cliente {ClienteId}", file.FileName, clienteId);
 
         return CreatedAtAction(nameof(Download), new { id = doc.Id }, MapToDto(doc));
     }
@@ -105,70 +105,73 @@ public class DocumentsController : ControllerBase
             return BadRequest(new ProblemDetails { Title = "Arquivo não enviado", Status = 400 });
 
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var uploadPath = GetUploadPath();
-        var nomeArquivo = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
-        var caminhoCompleto = Path.Combine(uploadPath, nomeArquivo);
+        var user = await _userManager.FindByIdAsync(userId);
 
-        await using (var stream = new FileStream(caminhoCompleto, FileMode.Create))
+        string s3Key;
+        await using (var stream = file.OpenReadStream())
         {
-            await file.CopyToAsync(stream);
+            s3Key = await _s3.UploadAsync(stream, file.FileName, file.ContentType);
         }
 
         var doc = new Document
         {
             NomeOriginal = file.FileName,
-            NomeArquivo = nomeArquivo,
-            CaminhoRelativo = nomeArquivo,
+            NomeArquivo = Path.GetFileName(s3Key),
+            S3Key = s3Key,
             TipoMime = file.ContentType,
             TamanhoBytes = file.Length,
             Descricao = descricao,
             ClienteId = userId,
+            ClienteNome = user?.FullName,
             CreatedBy = userId
         };
 
-        _db.Documents.Add(doc);
-        await _db.SaveChangesAsync();
+        await _repo.CreateAsync(doc);
 
         return CreatedAtAction(nameof(Download), new { id = doc.Id }, MapToDto(doc));
     }
 
     [HttpGet("{id}/download")]
-    public async Task<IActionResult> Download(int id)
+    public async Task<IActionResult> Download(string id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var isAdmin = User.IsInRole("ADMIN");
 
-        var doc = await _db.Documents.FindAsync(id);
+        var doc = await _repo.GetByIdAsync(id);
         if (doc == null) return NotFound();
 
         if (!isAdmin && doc.ClienteId != userId)
             return Forbid();
 
-        var uploadPath = GetUploadPath();
-        var filePath = Path.Combine(uploadPath, doc.CaminhoRelativo);
-
-        if (!System.IO.File.Exists(filePath))
-            return NotFound(new ProblemDetails { Title = "Arquivo não encontrado no servidor", Status = 404 });
-
-        var bytes = await System.IO.File.ReadAllBytesAsync(filePath);
-        return File(bytes, doc.TipoMime, doc.NomeOriginal);
+        try
+        {
+            var (stream, contentType) = await _s3.DownloadAsync(doc.S3Key);
+            return File(stream, contentType, doc.NomeOriginal);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao baixar documento {Id} do S3", id);
+            return NotFound(new ProblemDetails { Title = "Arquivo não encontrado no S3", Status = 404 });
+        }
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(string id)
     {
-        var doc = await _db.Documents.FindAsync(id);
+        var doc = await _repo.GetByIdAsync(id);
         if (doc == null) return NotFound();
 
-        var uploadPath = GetUploadPath();
-        var filePath = Path.Combine(uploadPath, doc.CaminhoRelativo);
+        try
+        {
+            await _s3.DeleteAsync(doc.S3Key);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Falha ao remover arquivo do S3: {Key}", doc.S3Key);
+        }
 
-        if (System.IO.File.Exists(filePath))
-            System.IO.File.Delete(filePath);
-
-        _db.Documents.Remove(doc);
-        await _db.SaveChangesAsync();
+        await _repo.DeleteAsync(id);
 
         _logger.LogInformation("Documento excluído: {Nome}", doc.NomeOriginal);
         return NoContent();
@@ -182,7 +185,7 @@ public class DocumentsController : ControllerBase
         TamanhoBytes = d.TamanhoBytes,
         Descricao = d.Descricao,
         ClienteId = d.ClienteId,
-        ClienteNome = d.Cliente?.FullName,
+        ClienteNome = d.ClienteNome,
         CreatedAt = d.CreatedAt,
         UpdatedAt = d.UpdatedAt
     };

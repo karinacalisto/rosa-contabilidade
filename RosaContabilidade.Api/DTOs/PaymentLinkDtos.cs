@@ -4,7 +4,7 @@ namespace RosaContabilidade.Api.DTOs;
 
 public class PaymentLinkDto
 {
-    public int Id { get; set; }
+    public string Id { get; set; } = string.Empty;
     public string Descricao { get; set; } = string.Empty;
     public string Url { get; set; } = string.Empty;
     public decimal? Valor { get; set; }

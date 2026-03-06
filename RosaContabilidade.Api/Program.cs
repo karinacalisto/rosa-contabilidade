@@ -1,11 +1,14 @@
 using System.Text;
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.DataModel;
+using Amazon.S3;
 using AspNetCoreRateLimit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using RosaContabilidade.Api.Data;
+using RosaContabilidade.Api.Data.Repositories;
 using RosaContabilidade.Api.Middleware;
 using RosaContabilidade.Api.Models;
 using RosaContabilidade.Api.Services;
@@ -17,14 +20,66 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
-// ===== MySQL + EF Core =====
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Server=localhost;Port=3306;Database=rosa_contabilidade;User=root;Password=root;";
+// ===== AWS DynamoDB =====
+var awsRegion = builder.Configuration["Aws:Region"] ?? "us-east-1";
+var serviceUrl = builder.Configuration["Aws:DynamoDbServiceUrl"]; // for local DynamoDB
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+if (!string.IsNullOrEmpty(serviceUrl))
+{
+    // Local DynamoDB (development)
+    builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
+    {
+        var config = new AmazonDynamoDBConfig
+        {
+            ServiceURL = serviceUrl
+        };
+        return new AmazonDynamoDBClient("fakeAccessKey", "fakeSecretKey", config);
+    });
+}
+else
+{
+    // AWS credentials from environment/IAM role (production)
+    builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions("Aws"));
+    builder.Services.AddAWSService<IAmazonDynamoDB>();
+}
 
-// ===== Identity =====
+builder.Services.AddSingleton<IDynamoDBContext>(sp =>
+{
+    var client = sp.GetRequiredService<IAmazonDynamoDB>();
+    return new DynamoDBContext(client);
+});
+
+// ===== AWS S3 =====
+if (!string.IsNullOrEmpty(serviceUrl))
+{
+    // LocalStack or local S3 mock
+    builder.Services.AddSingleton<IAmazonS3>(sp =>
+    {
+        var s3ServiceUrl = builder.Configuration["Aws:S3ServiceUrl"] ?? serviceUrl;
+        var config = new AmazonS3Config
+        {
+            ServiceURL = s3ServiceUrl,
+            ForcePathStyle = true
+        };
+        return new AmazonS3Client("fakeAccessKey", "fakeSecretKey", config);
+    });
+}
+else
+{
+    builder.Services.AddAWSService<IAmazonS3>();
+}
+
+// ===== DynamoDB Repositories =====
+builder.Services.AddSingleton<LeadRepository>();
+builder.Services.AddSingleton<PendencyRepository>();
+builder.Services.AddSingleton<PaymentLinkRepository>();
+builder.Services.AddSingleton<DocumentRepository>();
+builder.Services.AddSingleton<S3StorageService>();
+
+// ===== Identity with DynamoDB stores =====
+builder.Services.AddSingleton<DynamoUserStore>();
+builder.Services.AddSingleton<DynamoRoleStore>();
+
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = true;
@@ -36,7 +91,8 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Lockout.MaxFailedAccessAttempts = 5;
     options.User.RequireUniqueEmail = true;
 })
-.AddEntityFrameworkStores<AppDbContext>()
+.AddUserStore<DynamoUserStore>()
+.AddRoleStore<DynamoRoleStore>()
 .AddDefaultTokenProviders();
 
 // ===== JWT =====
@@ -152,7 +208,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Rosa Contabilidade API v1");
-    c.RoutePrefix = "";  // Raiz: http://localhost:5212/
+    c.RoutePrefix = "";
 });
 
 app.UseDefaultFiles();
@@ -168,27 +224,25 @@ app.MapControllers();
 // SPA fallback
 app.MapFallbackToFile("index.html");
 
-// ===== Migrations + Seed em DEV =====
+// ===== DynamoDB Tables + Seed =====
 try
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var dynamoClient = app.Services.GetRequiredService<IAmazonDynamoDB>();
+    await DynamoDbSetup.EnsureTablesExistAsync(dynamoClient);
 
-        if (app.Environment.IsDevelopment())
-        {
-            await db.Database.EnsureCreatedAsync();
-            await SeedData.Initialize(scope.ServiceProvider);
-        }
-        else
-        {
-            await db.Database.MigrateAsync();
-        }
+    // S3 bucket
+    var s3Service = app.Services.GetRequiredService<S3StorageService>();
+    await s3Service.EnsureBucketExistsAsync();
+
+    if (app.Environment.IsDevelopment())
+    {
+        using var scope = app.Services.CreateScope();
+        await SeedData.Initialize(scope.ServiceProvider);
     }
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"❌ Erro ao conectar ao banco: {ex.Message}");
+    Console.WriteLine($"Erro ao inicializar AWS: {ex.Message}");
     Console.WriteLine($"Stack: {ex.StackTrace}");
 }
 

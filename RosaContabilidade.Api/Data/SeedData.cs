@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using RosaContabilidade.Api.Models;
+using Amazon.DynamoDBv2.DataModel;
 
 namespace RosaContabilidade.Api.Data;
 
@@ -7,21 +8,13 @@ public static class SeedData
 {
     public static async Task Initialize(IServiceProvider serviceProvider)
     {
-        var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-        var db = serviceProvider.GetRequiredService<AppDbContext>();
-
-        // Criar roles
-        string[] roles = { "ADMIN", "CLIENTE" };
-        foreach (var role in roles)
-        {
-            if (!await roleManager.RoleExistsAsync(role))
-                await roleManager.CreateAsync(new IdentityRole(role));
-        }
+        var db = serviceProvider.GetRequiredService<IDynamoDBContext>();
 
         // Admin
         var adminEmail = "admin@admin.com";
-        if (await userManager.FindByEmailAsync(adminEmail) == null)
+        var existingAdmin = await userManager.FindByEmailAsync(adminEmail);
+        if (existingAdmin == null)
         {
             var admin = new ApplicationUser
             {
@@ -32,7 +25,10 @@ public static class SeedData
             };
             var result = await userManager.CreateAsync(admin, "TrocarNaPrimeiraSenha123!");
             if (result.Succeeded)
+            {
                 await userManager.AddToRoleAsync(admin, "ADMIN");
+                await userManager.UpdateAsync(admin);
+            }
         }
 
         // Cliente 1
@@ -51,7 +47,11 @@ public static class SeedData
             };
             var result = await userManager.CreateAsync(cliente1, "Cliente123!");
             if (result.Succeeded)
+            {
                 await userManager.AddToRoleAsync(cliente1, "CLIENTE");
+                await userManager.UpdateAsync(cliente1);
+            }
+            cliente1 = await userManager.FindByEmailAsync(cliente1Email);
         }
 
         // Cliente 2
@@ -70,105 +70,111 @@ public static class SeedData
             };
             var result = await userManager.CreateAsync(cliente2, "Cliente123!");
             if (result.Succeeded)
+            {
                 await userManager.AddToRoleAsync(cliente2, "CLIENTE");
+                await userManager.UpdateAsync(cliente2);
+            }
+            cliente2 = await userManager.FindByEmailAsync(cliente2Email);
         }
 
-        // Seed pendências, pagamentos, leads (somente se não existirem)
-        if (!db.Pendencies.Any())
+        // Seed pendências
+        var existingPendencies = await db.ScanAsync<Pendency>(default(List<Amazon.DynamoDBv2.DataModel.ScanCondition>), null).GetRemainingAsync();
+        if (existingPendencies.Count == 0)
         {
             if (cliente1 != null)
             {
-                db.Pendencies.AddRange(
-                    new Pendency
-                    {
-                        Descricao = "Enviar comprovantes de despesas médicas do mês 01/2026",
-                        ClienteId = cliente1.Id,
-                        DataLimite = new DateTime(2026, 2, 15),
-                        CreatedBy = "seed"
-                    },
-                    new Pendency
-                    {
-                        Descricao = "Atualizar cadastro no CRM estadual",
-                        ClienteId = cliente1.Id,
-                        DataLimite = new DateTime(2026, 3, 30),
-                        CreatedBy = "seed"
-                    }
-                );
+                await db.SaveAsync(new Pendency
+                {
+                    Descricao = "Enviar comprovantes de despesas médicas do mês 01/2026",
+                    ClienteId = cliente1.Id,
+                    ClienteNome = cliente1.FullName,
+                    DataLimite = new DateTime(2026, 2, 15),
+                    CreatedBy = "seed"
+                });
+                await db.SaveAsync(new Pendency
+                {
+                    Descricao = "Atualizar cadastro no CRM estadual",
+                    ClienteId = cliente1.Id,
+                    ClienteNome = cliente1.FullName,
+                    DataLimite = new DateTime(2026, 3, 30),
+                    CreatedBy = "seed"
+                });
             }
-
             if (cliente2 != null)
             {
-                db.Pendencies.Add(new Pendency
+                await db.SaveAsync(new Pendency
                 {
                     Descricao = "Enviar contrato social atualizado",
                     ClienteId = cliente2.Id,
+                    ClienteNome = cliente2.FullName,
                     DataLimite = new DateTime(2026, 3, 15),
                     CreatedBy = "seed"
                 });
             }
         }
 
-        if (!db.PaymentLinks.Any())
+        // Seed payment links
+        var existingLinks = await db.ScanAsync<PaymentLink>(default(List<Amazon.DynamoDBv2.DataModel.ScanCondition>), null).GetRemainingAsync();
+        if (existingLinks.Count == 0)
         {
             if (cliente1 != null)
             {
-                db.PaymentLinks.Add(new PaymentLink
+                await db.SaveAsync(new PaymentLink
                 {
                     Descricao = "Honorários contábeis - Janeiro/2026",
                     Url = "https://pag.exemplo.com/rosa/12345",
                     Valor = 850.00m,
                     ClienteId = cliente1.Id,
+                    ClienteNome = cliente1.FullName,
                     CreatedBy = "seed"
                 });
             }
-
             if (cliente2 != null)
             {
-                db.PaymentLinks.Add(new PaymentLink
+                await db.SaveAsync(new PaymentLink
                 {
                     Descricao = "Honorários contábeis - Janeiro/2026",
                     Url = "https://pag.exemplo.com/rosa/67890",
                     Valor = 1200.00m,
                     ClienteId = cliente2.Id,
+                    ClienteNome = cliente2.FullName,
                     CreatedBy = "seed"
                 });
             }
         }
 
-        if (!db.Leads.Any())
+        // Seed leads
+        var existingLeads = await db.ScanAsync<Lead>(default(List<Amazon.DynamoDBv2.DataModel.ScanCondition>), null).GetRemainingAsync();
+        if (existingLeads.Count == 0)
         {
-            db.Leads.AddRange(
-                new Lead
-                {
-                    Nome = "Carlos Ferreira",
-                    Email = "carlos@exemplo.com",
-                    Telefone = "(11) 99999-1234",
-                    Mensagem = "Gostaria de saber mais sobre os serviços para médicos.",
-                    Origem = "contato"
-                },
-                new Lead
-                {
-                    Nome = "Ana Paula Mendes",
-                    Email = "ana.mendes@exemplo.com",
-                    Telefone = "(21) 98888-5678",
-                    Origem = "calculadora",
-                    TipoPessoa = "PJ",
-                    ReceitaMensal = 25000m,
-                    DespesasDedutiveis = 5000m,
-                    OpcaoRegime = "simples",
-                    ImpostoEstimado = 2800m,
-                    PercentualEfetivo = 0.112m
-                },
-                new Lead
-                {
-                    Nome = "Roberto Lima",
-                    Email = "roberto.lima@exemplo.com",
-                    Origem = "contato",
-                    Mensagem = "Preciso de ajuda com a declaração de IR médico."
-                }
-            );
+            await db.SaveAsync(new Lead
+            {
+                Nome = "Carlos Ferreira",
+                Email = "carlos@exemplo.com",
+                Telefone = "(11) 99999-1234",
+                Mensagem = "Gostaria de saber mais sobre os serviços para médicos.",
+                Origem = "contato"
+            });
+            await db.SaveAsync(new Lead
+            {
+                Nome = "Ana Paula Mendes",
+                Email = "ana.mendes@exemplo.com",
+                Telefone = "(21) 98888-5678",
+                Origem = "calculadora",
+                TipoPessoa = "PJ",
+                ReceitaMensal = 25000m,
+                DespesasDedutiveis = 5000m,
+                OpcaoRegime = "simples",
+                ImpostoEstimado = 2800m,
+                PercentualEfetivo = 0.112m
+            });
+            await db.SaveAsync(new Lead
+            {
+                Nome = "Roberto Lima",
+                Email = "roberto.lima@exemplo.com",
+                Origem = "contato",
+                Mensagem = "Preciso de ajuda com a declaração de IR médico."
+            });
         }
-
-        await db.SaveChangesAsync();
     }
 }

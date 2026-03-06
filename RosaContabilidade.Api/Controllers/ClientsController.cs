@@ -2,8 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RosaContabilidade.Api.Data;
+using RosaContabilidade.Api.Data.Repositories;
 using RosaContabilidade.Api.DTOs;
 using RosaContabilidade.Api.Models;
 
@@ -15,13 +14,22 @@ namespace RosaContabilidade.Api.Controllers;
 public class ClientsController : ControllerBase
 {
     private readonly UserManager<ApplicationUser> _userManager;
-    private readonly AppDbContext _db;
+    private readonly PendencyRepository _pendencyRepo;
+    private readonly PaymentLinkRepository _paymentLinkRepo;
+    private readonly DocumentRepository _documentRepo;
     private readonly ILogger<ClientsController> _logger;
 
-    public ClientsController(UserManager<ApplicationUser> userManager, AppDbContext db, ILogger<ClientsController> logger)
+    public ClientsController(
+        UserManager<ApplicationUser> userManager,
+        PendencyRepository pendencyRepo,
+        PaymentLinkRepository paymentLinkRepo,
+        DocumentRepository documentRepo,
+        ILogger<ClientsController> logger)
     {
         _userManager = userManager;
-        _db = db;
+        _pendencyRepo = pendencyRepo;
+        _paymentLinkRepo = paymentLinkRepo;
+        _documentRepo = documentRepo;
         _logger = logger;
     }
 
@@ -32,31 +40,29 @@ public class ClientsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<ClientDto>>> GetAll()
     {
-        var clientRole = await _db.Roles.FirstOrDefaultAsync(r => r.Name == "CLIENTE");
-        if (clientRole == null) return Ok(new List<ClientDto>());
+        var allUsers = await _userManager.GetUsersInRoleAsync("CLIENTE");
+        var clients = new List<ClientDto>();
 
-        var clientUserIds = await _db.UserRoles
-            .Where(ur => ur.RoleId == clientRole.Id)
-            .Select(ur => ur.UserId)
-            .ToListAsync();
+        foreach (var u in allUsers.OrderBy(u => u.FullName))
+        {
+            var pendencies = await _pendencyRepo.GetByClienteIdAsync(u.Id);
+            var documents = await _documentRepo.GetByClienteIdAsync(u.Id);
+            var payments = await _paymentLinkRepo.GetByClienteIdAsync(u.Id);
 
-        var clients = await _db.Users
-            .Where(u => clientUserIds.Contains(u.Id))
-            .Select(u => new ClientDto
+            clients.Add(new ClientDto
             {
                 Id = u.Id,
                 FullName = u.FullName,
-                Email = u.Email!,
+                Email = u.Email,
                 CpfCnpj = u.CpfCnpj,
                 RegimeObservacoes = u.RegimeObservacoes,
                 PhoneNumber = u.PhoneNumber,
                 CreatedAt = u.CreatedAt,
-                PendenciasCount = u.Pendencies.Count,
-                DocumentosCount = u.Documents.Count,
-                PagamentosCount = u.PaymentLinks.Count
-            })
-            .OrderBy(c => c.FullName)
-            .ToListAsync();
+                PendenciasCount = pendencies.Count,
+                DocumentosCount = documents.Count,
+                PagamentosCount = payments.Count
+            });
+        }
 
         return Ok(clients);
     }
@@ -68,26 +74,25 @@ public class ClientsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<ClientDto>> GetById(string id)
     {
-        var user = await _db.Users
-            .Include(u => u.Pendencies)
-            .Include(u => u.PaymentLinks)
-            .Include(u => u.Documents)
-            .FirstOrDefaultAsync(u => u.Id == id);
-
+        var user = await _userManager.FindByIdAsync(id);
         if (user == null) return NotFound();
+
+        var pendencies = await _pendencyRepo.GetByClienteIdAsync(id);
+        var documents = await _documentRepo.GetByClienteIdAsync(id);
+        var payments = await _paymentLinkRepo.GetByClienteIdAsync(id);
 
         return Ok(new ClientDto
         {
             Id = user.Id,
             FullName = user.FullName,
-            Email = user.Email!,
+            Email = user.Email,
             CpfCnpj = user.CpfCnpj,
             RegimeObservacoes = user.RegimeObservacoes,
             PhoneNumber = user.PhoneNumber,
             CreatedAt = user.CreatedAt,
-            PendenciasCount = user.Pendencies.Count,
-            DocumentosCount = user.Documents.Count,
-            PagamentosCount = user.PaymentLinks.Count
+            PendenciasCount = pendencies.Count,
+            DocumentosCount = documents.Count,
+            PagamentosCount = payments.Count
         });
     }
 
@@ -122,6 +127,7 @@ public class ClientsController : ControllerBase
             });
 
         await _userManager.AddToRoleAsync(user, "CLIENTE");
+        await _userManager.UpdateAsync(user);
 
         _logger.LogInformation("Cliente criado: {Email} por admin", request.Email);
 
@@ -183,21 +189,20 @@ public class ClientsController : ControllerBase
     public async Task<ActionResult<ClientDashboardDto>> Dashboard()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var user = await _db.Users
-            .Include(u => u.Pendencies.OrderByDescending(p => p.CreatedAt))
-            .Include(u => u.PaymentLinks.OrderByDescending(p => p.CreatedAt))
-            .Include(u => u.Documents.OrderByDescending(d => d.CreatedAt))
-            .FirstOrDefaultAsync(u => u.Id == userId);
-
+        var user = await _userManager.FindByIdAsync(userId!);
         if (user == null) return NotFound();
+
+        var pendencies = await _pendencyRepo.GetByClienteIdAsync(userId!);
+        var payments = await _paymentLinkRepo.GetByClienteIdAsync(userId!);
+        var documents = await _documentRepo.GetByClienteIdAsync(userId!);
 
         return Ok(new ClientDashboardDto
         {
             FullName = user.FullName,
-            Email = user.Email!,
+            Email = user.Email,
             CpfCnpj = user.CpfCnpj,
             RegimeObservacoes = user.RegimeObservacoes,
-            Pendencias = user.Pendencies.Select(p => new PendencyDto
+            Pendencias = pendencies.OrderByDescending(p => p.CreatedAt).Select(p => new PendencyDto
             {
                 Id = p.Id,
                 Descricao = p.Descricao,
@@ -207,7 +212,7 @@ public class ClientsController : ControllerBase
                 CreatedAt = p.CreatedAt,
                 UpdatedAt = p.UpdatedAt
             }).ToList(),
-            LinksPagamento = user.PaymentLinks.Select(p => new PaymentLinkDto
+            LinksPagamento = payments.OrderByDescending(p => p.CreatedAt).Select(p => new PaymentLinkDto
             {
                 Id = p.Id,
                 Descricao = p.Descricao,
@@ -218,7 +223,7 @@ public class ClientsController : ControllerBase
                 CreatedAt = p.CreatedAt,
                 UpdatedAt = p.UpdatedAt
             }).ToList(),
-            Documentos = user.Documents.Select(d => new DocumentDto
+            Documentos = documents.OrderByDescending(d => d.CreatedAt).Select(d => new DocumentDto
             {
                 Id = d.Id,
                 NomeOriginal = d.NomeOriginal,

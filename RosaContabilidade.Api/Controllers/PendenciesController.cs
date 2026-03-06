@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using RosaContabilidade.Api.Data;
+using RosaContabilidade.Api.Data.Repositories;
 using RosaContabilidade.Api.DTOs;
 using RosaContabilidade.Api.Models;
 
@@ -13,42 +13,53 @@ namespace RosaContabilidade.Api.Controllers;
 [Authorize]
 public class PendenciesController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly PendencyRepository _repo;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public PendenciesController(AppDbContext db)
+    public PendenciesController(PendencyRepository repo, UserManager<ApplicationUser> userManager)
     {
-        _db = db;
+        _repo = repo;
+        _userManager = userManager;
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpGet]
     public async Task<ActionResult<List<PendencyDto>>> GetAll([FromQuery] string? clienteId)
     {
-        var query = _db.Pendencies.Include(p => p.Cliente).AsQueryable();
-        if (!string.IsNullOrEmpty(clienteId))
-            query = query.Where(p => p.ClienteId == clienteId);
-
-        var items = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
-        return Ok(items.Select(MapToDto));
+        var items = await _repo.GetAllAsync(clienteId);
+        // Enrich with client name
+        foreach (var item in items)
+        {
+            if (string.IsNullOrEmpty(item.ClienteNome))
+            {
+                var cliente = await _userManager.FindByIdAsync(item.ClienteId);
+                item.ClienteNome = cliente?.FullName;
+            }
+        }
+        var sorted = items.OrderByDescending(p => p.CreatedAt).ToList();
+        return Ok(sorted.Select(MapToDto));
     }
 
     [HttpGet("minhas")]
     public async Task<ActionResult<List<PendencyDto>>> GetMine()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var items = await _db.Pendencies
-            .Where(p => p.ClienteId == userId)
-            .OrderByDescending(p => p.CreatedAt)
-            .ToListAsync();
-        return Ok(items.Select(MapToDto));
+        var items = await _repo.GetByClienteIdAsync(userId);
+        var sorted = items.OrderByDescending(p => p.CreatedAt).ToList();
+        return Ok(sorted.Select(MapToDto));
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpGet("{id}")]
-    public async Task<ActionResult<PendencyDto>> GetById(int id)
+    public async Task<ActionResult<PendencyDto>> GetById(string id)
     {
-        var item = await _db.Pendencies.Include(p => p.Cliente).FirstOrDefaultAsync(p => p.Id == id);
+        var item = await _repo.GetByIdAsync(id);
         if (item == null) return NotFound();
+        if (string.IsNullOrEmpty(item.ClienteNome))
+        {
+            var cliente = await _userManager.FindByIdAsync(item.ClienteId);
+            item.ClienteNome = cliente?.FullName;
+        }
         return Ok(MapToDto(item));
     }
 
@@ -57,46 +68,46 @@ public class PendenciesController : ControllerBase
     public async Task<ActionResult<PendencyDto>> Create([FromBody] PendencyCreateRequest request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var cliente = await _userManager.FindByIdAsync(request.ClienteId);
+
         var item = new Pendency
         {
             Descricao = request.Descricao,
             Resolvida = request.Resolvida,
             DataLimite = request.DataLimite,
             ClienteId = request.ClienteId,
+            ClienteNome = cliente?.FullName,
             CreatedBy = userId
         };
 
-        _db.Pendencies.Add(item);
-        await _db.SaveChangesAsync();
+        await _repo.CreateAsync(item);
 
         return CreatedAtAction(nameof(GetById), new { id = item.Id }, MapToDto(item));
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(int id, [FromBody] PendencyUpdateRequest request)
+    public async Task<IActionResult> Update(string id, [FromBody] PendencyUpdateRequest request)
     {
-        var item = await _db.Pendencies.FindAsync(id);
+        var item = await _repo.GetByIdAsync(id);
         if (item == null) return NotFound();
 
         item.Descricao = request.Descricao;
         item.Resolvida = request.Resolvida;
         item.DataLimite = request.DataLimite;
-        item.UpdatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _repo.UpdateAsync(item);
         return NoContent();
     }
 
     [Authorize(Roles = "ADMIN")]
     [HttpDelete("{id}")]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(string id)
     {
-        var item = await _db.Pendencies.FindAsync(id);
+        var item = await _repo.GetByIdAsync(id);
         if (item == null) return NotFound();
 
-        _db.Pendencies.Remove(item);
-        await _db.SaveChangesAsync();
+        await _repo.DeleteAsync(id);
         return NoContent();
     }
 
@@ -107,7 +118,7 @@ public class PendenciesController : ControllerBase
         Resolvida = p.Resolvida,
         DataLimite = p.DataLimite,
         ClienteId = p.ClienteId,
-        ClienteNome = p.Cliente?.FullName,
+        ClienteNome = p.ClienteNome,
         CreatedAt = p.CreatedAt,
         UpdatedAt = p.UpdatedAt
     };
