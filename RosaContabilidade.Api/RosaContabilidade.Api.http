@@ -1,0 +1,50 @@
+@RosaContabilidade.Api_HostAddress = http://localhost:5212
+@AdminEmail = admin@admin.com
+@AdminPassword = TrocarNaPrimeiraSenha123!
+@ClienteEmail = maria.silva@exemplo.com
+@ClientePassword = Cliente123!
+
+### ========== LOGIN - ADMIN ==========
+POST {{RosaContabilidade.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{AdminEmail}}",
+  "password": "{{AdminPassword}}"
+}
+
+### ========== LOGIN - CLIENTE ==========
+POST {{RosaContabilidade.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{ClienteEmail}}",
+  "password": "{{ClientePassword}}"
+}
+
+### ========== GET CALCULADORA (sem autenticação) ==========
+GET {{RosaContabilidade.Api_HostAddress}}/api/calculator
+Accept: application/json
+
+### ========== POST CALCULADORA ==========
+POST {{RosaContabilidade.Api_HostAddress}}/api/calculator/calculate
+Content-Type: application/json
+
+{
+  "valorBruto": 5000,
+  "tipo": "PJ"
+}
+
+### ========== GET CLIENTES (requer token ADMIN) ==========
+GET {{RosaContabilidade.Api_HostAddress}}/api/clients
+Authorization: Bearer TOKEN_AQUI
+Accept: application/json
+
+### ========== GET PENDÊNCIAS DO CLIENTE ==========
+GET {{RosaContabilidade.Api_HostAddress}}/api/pendencies
+Authorization: Bearer TOKEN_AQUI
+Accept: application/json
+
+### ========== SWAGGER ==========
+GET {{RosaContabilidade.Api_HostAddress}}/swagger
+Accept: text/html
