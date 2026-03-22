@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
     <div class="page-container">
       <section class="page-header">
         <h1>Para Médicos</h1>
-        <p>[PLACEHOLDER: Por que médicos precisam de contabilidade especializada]</p>
+        <p>Médicos e profissionais da saúde enfrentam desafios tributários únicos. Com múltiplas fontes de renda, plantões e participações societárias, contar com uma contabilidade especializada faz toda a diferença no seu bolso e na sua tranquilidade.</p>
       </section>
 
       <section class="benefits">
@@ -39,13 +39,13 @@ import { MatButtonModule } from '@angular/material/button';
           <mat-card>
             <mat-card-header><mat-card-title>Pessoa Física</mat-card-title></mat-card-header>
             <mat-card-content>
-              <p>[PLACEHOLDER: Vantagens e desvantagens de atuar como PF]</p>
+              <p><strong>Vantagens:</strong> Simplicidade na declaração, sem custo de manutenção de empresa.<br/><strong>Desvantagens:</strong> Alíquota de IRPF pode chegar a 27,5%, sem possibilidade de deduzir muitas despesas operacionais. Indicado para rendimentos mais baixos ou início de carreira.</p>
             </mat-card-content>
           </mat-card>
           <mat-card>
             <mat-card-header><mat-card-title>Pessoa Jurídica</mat-card-title></mat-card-header>
             <mat-card-content>
-              <p>[PLACEHOLDER: Vantagens e desvantagens de abrir PJ médica]</p>
+              <p><strong>Vantagens:</strong> Carga tributária reduzida (a partir de 6% no Simples Nacional), possibilidade de deduzir despesas, maior proteção patrimonial.<br/><strong>Desvantagens:</strong> Custos de manutenção (contabilidade, taxas). Compensa a partir de R$ 8.000/mês de faturamento.</p>
             </mat-card-content>
           </mat-card>
         </div>
@@ -56,7 +56,7 @@ import { MatButtonModule } from '@angular/material/button';
 
       <section class="cta-section">
         <h2>Agende uma consultoria gratuita</h2>
-        <p>[PLACEHOLDER: Chamada para médicos entrarem em contato]</p>
+        <p>Descubra quanto você pode economizar em impostos com uma contabilidade especializada. Nossa primeira conversa é gratuita e sem compromisso.</p>
         <a mat-raised-button color="primary" routerLink="/contato">Agendar Agora</a>
       </section>
     </div>
@@ -84,9 +84,9 @@ import { MatButtonModule } from '@angular/material/button';
 })
 export class DoctorsComponent {
   benefits = [
-    { icon: 'medical_services', title: 'Especialistas em Saúde', description: '[PLACEHOLDER: Entendemos as particularidades da área médica]' },
-    { icon: 'trending_down', title: 'Redução de Impostos', description: '[PLACEHOLDER: Estratégias legais para pagar menos impostos]' },
-    { icon: 'schedule', title: 'Sem Burocracia', description: '[PLACEHOLDER: Cuidamos de toda a parte contábil para você focar no que importa]' },
-    { icon: 'shield', title: 'Conformidade Total', description: '[PLACEHOLDER: Segurança com todas as obrigações em dia]' },
+    { icon: 'medical_services', title: 'Especialistas em Saúde', description: 'Entendemos as particularidades da área médica: plantões, cooperativas, sociedades e rendimentos de múltiplas fontes. Sua contabilidade feita por quem conhece o setor.' },
+    { icon: 'trending_down', title: 'Redução de Impostos', description: 'Utilizamos estratégias legais de planejamento tributário que podem reduzir sua carga de impostos em até 60% comparado ao regime de Pessoa Física.' },
+    { icon: 'schedule', title: 'Sem Burocracia', description: 'Cuidamos de toda a parte contábil, fiscal e trabalhista para que você possa focar no que realmente importa: seus pacientes e sua carreira.' },
+    { icon: 'shield', title: 'Conformidade Total', description: 'Mantemos todas as obrigações fiscais em dia — DMED, IRPF, IRPJ, ISS e contribuições previdenciárias — para você nunca ter problemas com o fisco.' },
   ];
 }

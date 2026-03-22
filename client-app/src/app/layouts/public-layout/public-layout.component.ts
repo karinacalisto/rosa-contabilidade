@@ -60,7 +60,7 @@ import { AuthService } from '../../core/services/auth.service';
         </div>
         <div class="footer-section">
           <h3>Contato</h3>
-          <p>11 99162-3525</p>
+          <p>(11) 99162-3225</p>
         </div>
         <div class="footer-section">
           <h3>Links</h3>

@@ -78,28 +78,28 @@ import { ApiService } from '../../../core/services/api.service';
                 <mat-icon>phone</mat-icon>
                 <div>
                   <strong>Telefone</strong>
-                  <p>[PLACEHOLDER: (XX) XXXXX-XXXX]</p>
+                  <p>(11) 99162-3225</p>
                 </div>
               </div>
               <div class="info-item">
                 <mat-icon>email</mat-icon>
                 <div>
                   <strong>E-mail</strong>
-                  <p>[PLACEHOLDER: contato&#64;rosacontabilidade.com.br]</p>
+                  <p>contato&#64;rosacontabilidade.com.br</p>
                 </div>
               </div>
               <div class="info-item">
                 <mat-icon>location_on</mat-icon>
                 <div>
                   <strong>Endereço</strong>
-                  <p>[PLACEHOLDER: Endereço completo]</p>
+                  <p>São Paulo, SP</p>
                 </div>
               </div>
               <div class="info-item">
                 <mat-icon>schedule</mat-icon>
                 <div>
                   <strong>Horário</strong>
-                  <p>[PLACEHOLDER: Seg-Sex, 8h às 18h]</p>
+                  <p>Seg-Sex, 9h às 18h</p>
                 </div>
               </div>
             </mat-card-content>

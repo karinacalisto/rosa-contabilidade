@@ -34,13 +34,13 @@ import { MatExpansionModule } from '@angular/material/expansion';
 })
 export class FaqComponent {
   faqs = [
-    { pergunta: 'Quais serviços a Rosa Contabilidade oferece?', resposta: '[PLACEHOLDER: Lista de serviços oferecidos pela empresa]' },
-    { pergunta: 'Vocês atendem apenas médicos?', resposta: '[PLACEHOLDER: Explicar que atende profissionais de saúde em geral, com especialidade em médicos]' },
-    { pergunta: 'Qual a vantagem de abrir uma PJ médica?', resposta: '[PLACEHOLDER: Explicar economia tributária e benefícios de PJ para médicos]' },
-    { pergunta: 'Como funciona o portal do cliente?', resposta: '[PLACEHOLDER: Explicar funcionalidades do portal - documentos, pagamentos, pendências]' },
-    { pergunta: 'Quais documentos preciso enviar mensalmente?', resposta: '[PLACEHOLDER: Lista de documentos necessários para a contabilidade mensal]' },
-    { pergunta: 'Como é feito o planejamento tributário?', resposta: '[PLACEHOLDER: Explicar o processo de análise e planejamento tributário]' },
-    { pergunta: 'Qual o valor dos honorários?', resposta: '[PLACEHOLDER: Explicar que os valores variam conforme o porte e necessidades, e convidar para contato]' },
+    { pergunta: 'Quais serviços a Rosa Contabilidade oferece?', resposta: 'Oferecemos contabilidade geral, declaração de Imposto de Renda PF, abertura e regularização de empresas, planejamento tributário, entrega de obrigações acessórias (DMED, DIRF, SPED) e consultoria fiscal especializada para profissionais da saúde.' },
+    { pergunta: 'Vocês atendem apenas médicos?', resposta: 'Não! Atendemos empresas e profissionais de diversos segmentos. Porém, temos uma especialização em profissionais da saúde — médicos, dentistas, fisioterapeutas, psicólogos e outros — pois entendemos as particularidades tributárias desse setor.' },
+    { pergunta: 'Qual a vantagem de abrir uma PJ médica?', resposta: 'A principal vantagem é a economia tributária. Enquanto a alíquota de IRPF pode chegar a 27,5%, uma PJ no Simples Nacional pode pagar a partir de 6% de impostos. Além disso, você pode deduzir despesas operacionais e ter maior proteção patrimonial.' },
+    { pergunta: 'Como funciona o portal do cliente?', resposta: 'Nosso portal online permite que você envie e receba documentos, acompanhe pendências contábeis, visualize links de pagamento e tenha acesso a um painel com a situação atualizada da sua empresa — tudo de forma segura e prática.' },
+    { pergunta: 'Quais documentos preciso enviar mensalmente?', resposta: 'Geralmente são necessários: extratos bancários, notas fiscais emitidas e recebidas, comprovantes de despesas, folha de pagamento (se houver funcionários) e recibos de pagamento de impostos. Pelo portal, o envio é rápido e organizado.' },
+    { pergunta: 'Como é feito o planejamento tributário?', resposta: 'Analisamos seu faturamento, despesas e estrutura societária para simular cenários nos diferentes regimes tributários (Simples Nacional, Lucro Presumido e Lucro Real). Com base nisso, recomendamos a opção mais econômica e segura para o seu perfil.' },
+    { pergunta: 'Qual o valor dos honorários?', resposta: 'Os honorários variam conforme o porte da empresa, volume de movimentações e serviços contratados. Entre em contato pelo telefone (11) 99162-3225 ou pelo formulário de contato para receber uma proposta personalizada.' },
     { pergunta: 'A calculadora de impostos do site é precisa?', resposta: 'A calculadora é uma ferramenta educativa para simulação. Os valores são estimativas baseadas em faixas simplificadas e não substituem a análise detalhada de um contador profissional.' },
   ];
 }

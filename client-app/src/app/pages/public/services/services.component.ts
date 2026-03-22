@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
     <div class="page-container">
       <section class="page-header">
         <h1>Nossos Serviços</h1>
-        <p>[PLACEHOLDER: Descrição geral dos serviços oferecidos]</p>
+        <p>Oferecemos soluções contábeis completas para empresas e profissionais da saúde, com foco em economia tributária e conformidade fiscal.</p>
       </section>
 
       <div class="services-grid">
@@ -54,10 +54,10 @@ import { MatButtonModule } from '@angular/material/button';
 export class ServicesComponent {
   services = [
     { icon: 'account_balance', title: 'Contabilidade Geral', description: 'Cuidamos de toda a contabilidade da sua empresa, garantindo organização financeira e cumprimento das obrigações fiscais.' },
-    { icon: 'receipt_long', title: 'Imposto de Renda PF', description: '[PLACEHOLDER: Descrição do serviço de IRPF para profissionais de saúde]' },
-    { icon: 'business', title: 'Abertura de Empresa', description: '[PLACEHOLDER: Descrição do serviço de abertura de PJ médica]' },
-    { icon: 'calculate', title: 'Planejamento Tributário', description: '[PLACEHOLDER: Descrição do planejamento tributário especializado]' },
-    { icon: 'description', title: 'Obrigações Acessórias', description: '[PLACEHOLDER: Descrição sobre DMED, DIRF, etc.]' },
-    { icon: 'gavel', title: 'Consultoria Fiscal', description: '[PLACEHOLDER: Descrição de consultoria fiscal para médicos]' },
+    { icon: 'receipt_long', title: 'Imposto de Renda PF', description: 'Declaração completa do IRPF para profissionais de saúde, incluindo rendimentos de plantões, consultórios e participações societárias, garantindo todas as deduções legais.' },
+    { icon: 'business', title: 'Abertura de Empresa', description: 'Abertura e regularização de PJ médica (clínicas, consultórios e sociedades), com escolha do melhor regime tributário e enquadramento no CNAE correto para sua atividade.' },
+    { icon: 'calculate', title: 'Planejamento Tributário', description: 'Análise personalizada para identificar o regime tributário mais vantajoso — Simples Nacional, Lucro Presumido ou Lucro Real — reduzindo legalmente a carga de impostos.' },
+    { icon: 'description', title: 'Obrigações Acessórias', description: 'Entrega pontual de DMED, DIRF, SPED, EFD-Contribuições e demais obrigações fiscais, evitando multas e mantendo sua empresa em dia com o fisco.' },
+    { icon: 'gavel', title: 'Consultoria Fiscal', description: 'Consultoria especializada para médicos e profissionais de saúde sobre questões fiscais, societárias e trabalhistas, com orientação estratégica para cada fase do seu negócio.' },
   ];
 }
