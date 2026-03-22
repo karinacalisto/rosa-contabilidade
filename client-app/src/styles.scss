@@ -1,0 +1,48 @@
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+// Light theme
+$rosa-light-theme: mat.define-theme((
+  color: (
+    theme-type: light,
+    primary: mat.$violet-palette,
+    tertiary: mat.$rose-palette,
+  ),
+  density: (
+    scale: 0,
+  )
+));
+
+// Dark theme
+$rosa-dark-theme: mat.define-theme((
+  color: (
+    theme-type: dark,
+    primary: mat.$violet-palette,
+    tertiary: mat.$rose-palette,
+  ),
+  density: (
+    scale: 0,
+  )
+));
+
+:root {
+  @include mat.all-component-themes($rosa-light-theme);
+}
+
+.dark-theme {
+  @include mat.all-component-colors($rosa-dark-theme);
+  background-color: #121212;
+  color: #e0e0e0;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+a { color: inherit; }
+
+.mat-mdc-snack-bar-container { margin-top: 70px !important; }
